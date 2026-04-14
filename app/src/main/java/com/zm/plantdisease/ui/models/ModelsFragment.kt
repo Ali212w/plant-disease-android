@@ -99,6 +99,24 @@ class ModelsFragment : Fragment() {
         // Observe selectedModel — ONLY update card stroke highlights, never rebuild the list
         vm.selectedModel.observe(viewLifecycleOwner) { _ -> refreshSelectionHighlight() }
 
+        // راقب تقدم التحميل لتحديث أزرار الكروت مباشرةً (حتى بعد العودة للتبويب)
+        vm.downloadProgress.observe(viewLifecycleOwner) { progressMap ->
+            progressMap.forEach { (fileName, pct) ->
+                // ابحث عن الكارت الذي يملك نفس الـ fileName
+                binding.layoutMyModels.let { container ->
+                    for (i in 0 until container.childCount) {
+                        val card = container.getChildAt(i)
+                        val tag = card.tag as? String
+                        if (tag == fileName) {
+                            val btn = card.findViewById<TextView>(R.id.btnDownloadModel)
+                            btn?.text = "$pct%"
+                            btn?.isEnabled = false
+                        }
+                    }
+                }
+            }
+        }
+
         // زر إضافة نموذج خارجي
         binding.btnPreloadMyModels.text = "📂 إضافة نموذج خارجي"
         binding.btnPreloadMyModels.setOnClickListener {
@@ -226,35 +244,21 @@ class ModelsFragment : Fragment() {
                 .show()
         }
 
+        // وسّم كل كارت باسم الملف حتى يتمكن المراقب من تحديث أزرار التحميل
+        view.tag = model.fileName
+
         btnDownload.setOnClickListener {
             if (model.downloadUrl.isEmpty() || model.fileName.isEmpty()) return@setOnClickListener
-            
             btnDownload.text = "⏳"
             btnDownload.isEnabled = false
-            Snackbar.make(binding.root, "جاري تحميل ${model.name}...", Snackbar.LENGTH_SHORT).show()
-
-            com.zm.plantdisease.data.model.ModelDownloadManager.downloadFile(
-                context = requireContext(),
+            _binding?.let {
+                Snackbar.make(it.root, "جاري تحميل ${model.name}...", Snackbar.LENGTH_SHORT).show()
+            }
+            // التحميل يُدار من الـ ViewModel — يستمر حتى لو غادر المستخدم الصفحة
+            vm.downloadModelFile(
+                context = requireContext().applicationContext,
                 url = model.downloadUrl,
-                fileName = model.fileName,
-                onProgress = { pct ->
-                    activity?.runOnUiThread {
-                        btnDownload.text = "$pct%"
-                    }
-                },
-                onSuccess = {
-                    activity?.runOnUiThread {
-                        Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
-                        vm.loadModels()
-                    }
-                },
-                onError = { err ->
-                    activity?.runOnUiThread {
-                        btnDownload.text = "⬇️"
-                        btnDownload.isEnabled = true
-                        Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
-                    }
-                }
+                fileName = model.fileName
             )
         }
 

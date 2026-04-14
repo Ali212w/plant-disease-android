@@ -80,6 +80,10 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val _selectedModel = MutableLiveData<ModelInfo?>(modelA)
     val selectedModel: LiveData<ModelInfo?> = _selectedModel
 
+    // تتبع حالة التحميل الجاري: fileName -> progress(0-100)
+    private val _downloadProgress = MutableLiveData<Map<String, Int>>(emptyMap())
+    val downloadProgress: LiveData<Map<String, Int>> = _downloadProgress
+
     fun loadModels() {
         val ctx = getApplication<Application>().applicationContext
         
@@ -110,6 +114,40 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectModel(model: ModelInfo) = _selectedModel.postValue(model)
+
+    /**
+     * تحميل نموذج مدار من الـ ViewModel للاستمرار عند التنقل بين التبويبات
+     */
+    fun downloadModelFile(context: android.content.Context, url: String, fileName: String) {
+        // لا تحمل مجدداً إذا جاري تحميله بالفعل
+        if ((_downloadProgress.value ?: emptyMap()).containsKey(fileName)) return
+        // ضبط التقدم إلى 0
+        val current = (_downloadProgress.value ?: emptyMap()).toMutableMap()
+        current[fileName] = 0
+        _downloadProgress.postValue(current)
+
+        com.zm.plantdisease.data.model.ModelDownloadManager.downloadFile(
+            context = context,
+            url = url,
+            fileName = fileName,
+            onProgress = { pct ->
+                val map = (_downloadProgress.value ?: emptyMap()).toMutableMap()
+                map[fileName] = pct
+                _downloadProgress.postValue(map)
+            },
+            onSuccess = {
+                val map = (_downloadProgress.value ?: emptyMap()).toMutableMap()
+                map.remove(fileName)
+                _downloadProgress.postValue(map)
+                loadModels()
+            },
+            onError = { _ ->
+                val map = (_downloadProgress.value ?: emptyMap()).toMutableMap()
+                map.remove(fileName)
+                _downloadProgress.postValue(map)
+            }
+        )
+    }
 
     /** إضافة نموذج خارجي (.ptl) من مسار داخلي في الجوال */
     fun addExternalModel(modelPath: String, modelName: String, description: String) {
