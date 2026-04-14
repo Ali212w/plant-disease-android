@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Backgrounds -->
+    <color name="bg_primary">#0A0F0D</color>
+    <color name="bg_surface">#111A14</color>
+    <color name="bg_surface2">#1A2A1E</color>
+    <color name="bg_surface3">#1F3326</color>
+
+    <!-- Borders -->
+    <color name="border">#2A4030</color>
+    <color name="border_dashed">#2A4030</color>
+
+    <!-- Brand Colors -->
+    <color name="green_primary">#22C55E</color>
+    <color name="green_dark">#16A34A</color>
+    <color name="green_glow">#22C55E44</color>
+    <color name="green_bg_low">#16A34A22</color>
+
+    <!-- Accent Colors -->
+    <color name="blue">#3B82F6</color>
+    <color name="purple">#A855F7</color>
+    <color name="amber">#F59E0B</color>
+    <color name="red">#EF4444</color>
+    <color name="cyan">#06B6D4</color>
+    <color name="red_bg_low">#DC262622</color>
+    <color name="cyan_bg_low">#0891B222</color>
+
+    <!-- Text -->
+    <color name="text_primary">#E2E8F0</color>
+    <color name="text_muted">#64748B</color>
+
+    <!-- Nav -->
+    <color name="nav_selected">#22C55E</color>
+    <color name="nav_unselected">#64748B</color>
+
+    <!-- Material Defaults -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

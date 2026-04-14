@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navDetect">
+
+    <fragment
+        android:id="@+id/navDetect"
+        android:name="com.zm.plantdisease.ui.detect.DetectFragment"
+        android:label="تشخيص" />
+
+    <fragment
+        android:id="@+id/navModels"
+        android:name="com.zm.plantdisease.ui.models.ModelsFragment"
+        android:label="النماذج" />
+
+    <fragment
+        android:id="@+id/navCompare"
+        android:name="com.zm.plantdisease.ui.compare.CompareFragment"
+        android:label="مقارنة" />
+
+    <fragment
+        android:id="@+id/navHistory"
+        android:name="com.zm.plantdisease.ui.history.HistoryFragment"
+        android:label="السجل" />
+
+</navigation>

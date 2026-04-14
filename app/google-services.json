@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "675132799464",
+    "project_id": "plant-disease-app-cb4d1",
+    "storage_bucket": "plant-disease-app-cb4d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:675132799464:android:b4781820882423dc680c5d",
+        "android_client_info": {
+          "package_name": "com.zm.plantdisease"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "675132799464-fhbc10k652bs8em53ga0egc78dhct0k2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zm.plantdisease",
+            "certificate_hash": "cf4d76a4a24f247b5d192a83d12c7eae9d5879b2"
+          }
+        },
+        {
+          "client_id": "675132799464-pshea2492tvr67gbh9pke4qn67pudm4g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfTyx_um1LuaI2mhVCJcPc9VVEE_VThKg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "675132799464-pshea2492tvr67gbh9pke4qn67pudm4g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

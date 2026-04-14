@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">كاشف أمراض النباتات</string>
+    <string name="app_name_en">Plant Disease Detector</string>
+
+    <!-- Auth -->
+    <string name="sign_in_google">الدخول بـ Google</string>
+    <string name="sign_in_email">تسجيل الدخول</string>
+    <string name="register">إنشاء حساب</string>
+    <string name="guest_login">دخول كضيف</string>
+    <string name="email_hint">البريد الإلكتروني</string>
+    <string name="password_hint">كلمة المرور</string>
+
+    <!-- Navigation -->
+    <string name="nav_detect">تشخيص</string>
+    <string name="nav_models">النماذج</string>
+    <string name="nav_compare">مقارنة</string>
+    <string name="nav_history">السجل</string>
+
+    <!-- Detect -->
+    <string name="pick_image">اختر صورة ورقة نبات</string>
+    <string name="btn_gallery">📁 المعرض</string>
+    <string name="btn_camera">📷 الكاميرا</string>
+    <string name="btn_predict">🔬 ابدأ التشخيص</string>
+    <string name="btn_new">🔄 تشخيص صورة جديدة</string>
+    <string name="loading_text">جاري تحليل الصورة…</string>
+    <string name="confidence_label">نسبة الثقة</string>
+    <string name="selected_model_hint">اختر نموذجاً من صفحة النماذج</string>
+
+    <!-- Models -->
+    <string name="my_models">🏆 نماذجي المُدرَّبة</string>
+    <string name="baseline_models">⚖️ نماذج المقارنة</string>
+    <string name="preload_models">⚡ تحميل النماذج مسبقاً</string>
+
+    <!-- Compare -->
+    <string name="compare_title">مقارنة جميع النماذج</string>
+    <string name="btn_compare">⚖️ قارن جميع النماذج</string>
+    <string name="ranking_title">🏅 ترتيب النماذج</string>
+
+    <!-- History -->
+    <string name="history_title">سجل التشخيصات</string>
+    <string name="no_history">لا يوجد سجل بعد — ابدأ بتشخيص صورة!</string>
+    <string name="total_diagnoses">إجمالي التشخيصات</string>
+    <string name="avg_confidence">متوسط الثقة</string>
+    <string name="top_model">النموذج الأكثر استخداماً</string>
+
+    <!-- Firebase required -->
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
+</resources>

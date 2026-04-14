@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- مجلد الكاش المؤقت للكاميرا -->
+    <cache-path name="camera_images" path="." />
+    <!-- مجلد التخزين الداخلي للتطبيق -->
+    <files-path name="internal_files" path="." />
+    <!-- مجلد التنزيلات الخارجية -->
+    <external-files-path name="external_files" path="." />
+</paths>

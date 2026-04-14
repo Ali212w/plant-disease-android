@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/splash_bg">
+
+    <!-- بطاقة التحميل - تظهر فقط عند تحميل النموذج لأول مرة -->
+    <LinearLayout
+        android:id="@+id/downloadCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="24dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="60dp"
+        android:background="@drawable/bg_download_card"
+        android:elevation="12dp"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="gone">
+
+        <!-- أيقونة وعنوان -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:text="جاري تحميل النموذج"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/tvPercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="0%"
+                android:textColor="#A8D8A0"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <!-- شرح -->
+        <TextView
+            android:id="@+id/tvDownloadSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="يُحمَّل مرة واحدة فقط، ثم يعمل بدون إنترنت"
+            android:textColor="#99FFFFFF"
+            android:textSize="12sp" />
+
+        <!-- شريط التقدم -->
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="@android:style/Widget.Material.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:layout_marginTop="16dp"
+            android:max="100"
+            android:progress="0"
+            android:progressBackgroundTint="#33FFFFFF"
+            android:progressTint="#A8D8A0" />
+
+        <!-- حجم التحميل -->
+        <TextView
+            android:id="@+id/tvDownloadSize"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="127 MB"
+            android:textAlignment="center"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp" />
+
+        <!-- رسالة الخطأ (مخفية افتراضياً) -->
+        <TextView
+            android:id="@+id/tvError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#FF6B6B"
+            android:textSize="12sp"
+            android:textAlignment="center"
+            android:visibility="gone" />
+
+        <!-- زر إعادة المحاولة (مخفي افتراضياً) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRetry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:text="إعادة المحاولة"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#2E7D32"
+            android:visibility="gone"
+            app:cornerRadius="12dp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

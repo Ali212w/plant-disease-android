@@ -1,0 +1,47 @@
+# Built application files
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik VM
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration file (contains SDK path - sensitive)
+local.properties
+
+# Log Files
+*.log
+
+# Android Studio generated files
+.idea/
+*.iml
+.DS_Store
+
+# NDK
+obj/
+
+# Model file (too large - downloaded from GitHub Releases on first launch)
+*.ptl
+*.pt
+
+# Keystore files (SECURITY SENSITIVE)
+*.jks
+*.keystore
+
+# Google Services (keep this if sharing privately, but exclude if public)
+# google-services.json

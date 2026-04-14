@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/bg_surface"
+    app:cardCornerRadius="14dp"
+    app:strokeColor="@color/border"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/bg_surface2"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="10dp">
+            
+            <TextView
+                android:id="@+id/tvMedal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🥇"
+                android:textSize="18sp"
+                android:layout_marginEnd="8dp"/>
+                
+            <TextView
+                android:id="@+id/tvModelName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-black"
+                android:textColor="@color/text_primary"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+        </LinearLayout>
+        
+        <View android:layout_width="match_parent" android:layout_height="1dp" android:background="@color/border"/>
+
+        <!-- Body -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:id="@+id/tvPredName"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="sans-serif-black"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:layout_marginEnd="12dp"/>
+
+                <TextView
+                    android:id="@+id/tvConfidence"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-black"
+                    android:textColor="@color/green_primary"
+                    android:textSize="20sp"/>
+            </LinearLayout>
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginBottom="8dp">
+
+                <View
+                    android:id="@+id/viewConfTrack"
+                    android:layout_width="match_parent"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bar_track_bg" />
+
+                <View
+                    android:id="@+id/viewConfFill"
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:background="@drawable/bar_fill_bg" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/tvTimingMs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
+                android:textColor="@color/text_muted"
+                android:textSize="10sp"
+                android:drawableStart="@drawable/ic_lightning_small"
+                android:drawablePadding="4dp"/>
+        </LinearLayout>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
