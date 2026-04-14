@@ -238,18 +238,18 @@ class ModelsFragment : Fragment() {
                 url = model.downloadUrl,
                 fileName = model.fileName,
                 onProgress = { pct ->
-                    requireActivity().runOnUiThread {
+                    activity?.runOnUiThread {
                         btnDownload.text = "$pct%"
                     }
                 },
                 onSuccess = {
-                    requireActivity().runOnUiThread {
+                    activity?.runOnUiThread {
                         Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
-                        vm.loadModels() // لتحديث الواجهة وكشف الملف
+                        vm.loadModels()
                     }
                 },
                 onError = { err ->
-                    requireActivity().runOnUiThread {
+                    activity?.runOnUiThread {
                         btnDownload.text = "⬇️"
                         btnDownload.isEnabled = true
                         Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
