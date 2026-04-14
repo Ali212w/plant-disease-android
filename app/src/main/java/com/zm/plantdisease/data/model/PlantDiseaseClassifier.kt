@@ -86,7 +86,7 @@ class PlantDiseaseClassifier(private val context: Context) {
         val outputTensor = mod.forward(IValue.from(inputTensor)).toTensor()
         val predictMs    = System.currentTimeMillis() - startPredict
 
-        // تطبيق softmax على الـ logits الخام (النماذج المنفردة لا تحتوي على softmax)
+        // تطبيق Softmax لتحويل Logits إلى احتمالات (0-100%)
         val logits = outputTensor.dataAsFloatArray
         val scores = softmax(logits)
 
@@ -112,12 +112,12 @@ class PlantDiseaseClassifier(private val context: Context) {
         )
     }
 
-    /** تحويل logits إلى احتمالات باستخدام Softmax */
+    /** تطبيق Softmax على مصفوفة Logits */
     private fun softmax(logits: FloatArray): FloatArray {
-        val maxVal = logits.max() ?: 0f
-        val expVals = logits.map { Math.exp((it - maxVal).toDouble()).toFloat() }
-        val sum = expVals.sum()
-        return expVals.map { it / sum }.toFloatArray()
+        val maxVal = logits.max()
+        val exps = FloatArray(logits.size) { Math.exp((logits[it] - maxVal).toDouble()).toFloat() }
+        val sumExp = exps.sum()
+        return FloatArray(logits.size) { exps[it] / sumExp }
     }
 
     private fun loadAndPreprocess(uri: Uri): Bitmap {

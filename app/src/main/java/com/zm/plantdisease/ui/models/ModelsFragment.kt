@@ -71,17 +71,11 @@ class ModelsFragment : Fragment() {
         return binding.root
     }
 
-    override fun onResume() {
-        super.onResume()
-        // إعادة فحص وجود الملفات في كل مرة يُفتح فيها التبويب
-        vm.loadModels()
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Observe models list — rebuild cards when list data OR availability changes
-        var lastModelKey: String = ""
+        // Observe models list — rebuild cards when data OR availability changes
+        var lastModelStates: List<String> = emptyList()
         vm.models.observe(viewLifecycleOwner) { resource ->
             when (resource) {
                 is Resource.Loading -> binding.progressBar.visibility = View.VISIBLE
@@ -91,10 +85,10 @@ class ModelsFragment : Fragment() {
                 }
                 is Resource.Success -> {
                     binding.progressBar.visibility = View.GONE
-                    // مفتاح يشمل الاسم + حالة التوفر معاً
-                    val newKey = resource.data.joinToString { "${it.name}:${it.available}" }
-                    if (newKey != lastModelKey) {
-                        lastModelKey = newKey
+                    // نقارن الاسم + حالة التوفر معاً لإعادة البناء عند التحميل/الحذف
+                    val newStates = resource.data.map { "${it.name}-${it.available}" }
+                    if (newStates != lastModelStates) {
+                        lastModelStates = newStates
                         buildModelList(resource.data)
                     }
                     refreshSelectionHighlight()
@@ -114,7 +108,12 @@ class ModelsFragment : Fragment() {
             filePicker.launch("*/*")
         }
 
-        if (vm.models.value == null) vm.loadModels()
+        vm.loadModels() // تحميل أولي لتحديث حالة الملفات
+    }
+
+    override fun onResume() {
+        super.onResume()
+        vm.loadModels() // تحديث عند العودة للتبويب لكي تظهر النماذج المحملة
     }
 
     private fun buildModelList(models: List<ModelInfo>) {
@@ -179,8 +178,13 @@ class ModelsFragment : Fragment() {
         if (model.available) {
             warn.visibility = View.GONE
             btnDownload.visibility = View.GONE
-            // زر الحذف يظهر لجميع النماذج المحملة (ما عدا الخارجية التي تُحذف بطريقة مختلفة)
-            btnDelete.visibility = View.VISIBLE
+            
+            // إظهار زر الحذف إذا لم يكن النموذج الافتراضي (Model A) - أو حسب الحاجة
+            if (model.id != "model_A") {
+                btnDelete.visibility = View.VISIBLE
+            } else {
+                btnDelete.visibility = View.GONE
+            }
 
             var sizeText = "🎯 ${model.accuracy}"
             if (model.fileName.isNotEmpty()) {
@@ -234,26 +238,21 @@ class ModelsFragment : Fragment() {
                 url = model.downloadUrl,
                 fileName = model.fileName,
                 onProgress = { pct ->
-                    // استخدام activity مباشرة بدلاً من requireActivity() لتجنب الكراش عند انفصال الـ Fragment
-                    activity?.runOnUiThread {
-                        if (isAdded) btnDownload.text = "$pct%"
+                    requireActivity().runOnUiThread {
+                        btnDownload.text = "$pct%"
                     }
                 },
                 onSuccess = {
-                    activity?.runOnUiThread {
-                        if (isAdded) {
-                            Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
-                            vm.loadModels()
-                        }
+                    requireActivity().runOnUiThread {
+                        Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
+                        vm.loadModels() // لتحديث الواجهة وكشف الملف
                     }
                 },
                 onError = { err ->
-                    activity?.runOnUiThread {
-                        if (isAdded) {
-                            btnDownload.text = "⬇️"
-                            btnDownload.isEnabled = true
-                            Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
-                        }
+                    requireActivity().runOnUiThread {
+                        btnDownload.text = "⬇️"
+                        btnDownload.isEnabled = true
+                        Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
                     }
                 }
             )

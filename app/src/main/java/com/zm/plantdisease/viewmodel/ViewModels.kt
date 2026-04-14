@@ -30,7 +30,7 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val modelA = ModelInfo(
         id          = "model_A",
         name        = "EfficientNet-B0 (Model A)",
-        description = "نموذج سريع وخفيف، دقة أداء ممتازة (15.6 MB)",
+        description = "نموذجريع وخفيف، دقة أداء ممتازة (15.6 MB)",
         type        = "mine",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model_A.ptl",
@@ -42,7 +42,7 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val baselineModel = ModelInfo(
         id          = "baseline",
         name        = "EfficientNet-B0 (Baseline)",
-        description = "نموذج ablation أساسي للمقارنة (15.6 MB)",
+        description = "نموذج Ablation للمقارنة (15.6 MB)",
         type        = "mine",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/baseline.ptl",
