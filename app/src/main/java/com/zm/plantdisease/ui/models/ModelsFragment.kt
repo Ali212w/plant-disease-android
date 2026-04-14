@@ -19,12 +19,15 @@ import com.zm.plantdisease.viewmodel.DetectViewModel
 import java.io.File
 import java.io.FileOutputStream
 
+
 class ModelsFragment : Fragment() {
 
     private var _binding: FragmentModelsBinding? = null
     private val binding get() = _binding!!
     private val vm: DetectViewModel by activityViewModels()
 
+    // Maps model name → its card view for lightweight selection highlighting
+    private val modelCardMap = mutableMapOf<String, MaterialCardView>()
     // ── فتح ملف .ptl من ملفات الجوال ──────────────────────────────────────────
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -68,9 +71,17 @@ class ModelsFragment : Fragment() {
         return binding.root
     }
 
+    override fun onResume() {
+        super.onResume()
+        // إعادة فحص وجود الملفات في كل مرة يُفتح فيها التبويب
+        vm.loadModels()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // Observe models list — rebuild cards when list data OR availability changes
+        var lastModelKey: String = ""
         vm.models.observe(viewLifecycleOwner) { resource ->
             when (resource) {
                 is Resource.Loading -> binding.progressBar.visibility = View.VISIBLE
@@ -80,14 +91,21 @@ class ModelsFragment : Fragment() {
                 }
                 is Resource.Success -> {
                     binding.progressBar.visibility = View.GONE
-                    buildModelList(resource.data)
+                    // مفتاح يشمل الاسم + حالة التوفر معاً
+                    val newKey = resource.data.joinToString { "${it.name}:${it.available}" }
+                    if (newKey != lastModelKey) {
+                        lastModelKey = newKey
+                        buildModelList(resource.data)
+                    }
+                    refreshSelectionHighlight()
                 }
             }
         }
 
-        vm.selectedModel.observe(viewLifecycleOwner) { _ -> refreshSelection() }
+        // Observe selectedModel — ONLY update card stroke highlights, never rebuild the list
+        vm.selectedModel.observe(viewLifecycleOwner) { _ -> refreshSelectionHighlight() }
 
-        // زر إضافة نموذج خارجي (يحل محل preload)
+        // زر إضافة نموذج خارجي
         binding.btnPreloadMyModels.text = "📂 إضافة نموذج خارجي"
         binding.btnPreloadMyModels.setOnClickListener {
             Snackbar.make(binding.root,
@@ -104,6 +122,7 @@ class ModelsFragment : Fragment() {
         val baselist = binding.layoutBaselineModels
         myList.removeAllViews()
         baselist.removeAllViews()
+        modelCardMap.clear()
 
         models.forEach { model ->
             val card = buildModelCard(model)
@@ -160,13 +179,8 @@ class ModelsFragment : Fragment() {
         if (model.available) {
             warn.visibility = View.GONE
             btnDownload.visibility = View.GONE
-            
-            // إظهار زر الحذف إذا لم يكن النموذج الافتراضي (Model A) - أو حسب الحاجة
-            if (model.id != "model_A") {
-                btnDelete.visibility = View.VISIBLE
-            } else {
-                btnDelete.visibility = View.GONE
-            }
+            // زر الحذف يظهر لجميع النماذج المحملة (ما عدا الخارجية التي تُحذف بطريقة مختلفة)
+            btnDelete.visibility = View.VISIBLE
 
             var sizeText = "🎯 ${model.accuracy}"
             if (model.fileName.isNotEmpty()) {
@@ -220,26 +234,35 @@ class ModelsFragment : Fragment() {
                 url = model.downloadUrl,
                 fileName = model.fileName,
                 onProgress = { pct ->
-                    requireActivity().runOnUiThread {
-                        btnDownload.text = "$pct%"
+                    // استخدام activity مباشرة بدلاً من requireActivity() لتجنب الكراش عند انفصال الـ Fragment
+                    activity?.runOnUiThread {
+                        if (isAdded) btnDownload.text = "$pct%"
                     }
                 },
                 onSuccess = {
-                    requireActivity().runOnUiThread {
-                        Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
-                        vm.loadModels() // لتحديث الواجهة وكشف الملف
+                    activity?.runOnUiThread {
+                        if (isAdded) {
+                            Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
+                            vm.loadModels()
+                        }
                     }
                 },
                 onError = { err ->
-                    requireActivity().runOnUiThread {
-                        btnDownload.text = "⬇️"
-                        btnDownload.isEnabled = true
-                        Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
+                    activity?.runOnUiThread {
+                        if (isAdded) {
+                            btnDownload.text = "⬇️"
+                            btnDownload.isEnabled = true
+                            Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
+                        }
                     }
                 }
             )
         }
 
+        // Register this card in the map so refreshSelectionHighlight() can find it
+        modelCardMap[model.name] = card
+
+        // Initial highlight
         val isSelected = vm.selectedModel.value?.name == model.name
         card.strokeColor = if (isSelected)
             requireContext().getColor(R.color.green_primary)
@@ -251,16 +274,26 @@ class ModelsFragment : Fragment() {
                 Snackbar.make(binding.root, "يرجى تحميل النموذج أولاً", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            vm.selectModel(model)
+            vm.selectModel(model)  // This posts to _selectedModel only — does NOT call loadModels()
             Snackbar.make(binding.root, "✅ تم اختيار ${model.name}", Snackbar.LENGTH_SHORT).show()
         }
 
         return view
     }
 
-    private fun refreshSelection() {
-        vm.models.value?.let { res ->
-            if (res is Resource.Success) buildModelList(res.data)
+    /**
+     * Updates only the stroke/highlight on existing cards — does NOT rebuild the list.
+     * This breaks the loadModels() → selectedModel → refreshSelection() → loadModels() loop.
+     */
+    private fun refreshSelectionHighlight() {
+        if (!isAdded) return
+        val selectedName = vm.selectedModel.value?.name
+        modelCardMap.forEach { (name, card) ->
+            val isSelected = (name == selectedName)
+            card.strokeColor = if (isSelected)
+                requireContext().getColor(R.color.green_primary)
+            else requireContext().getColor(R.color.border)
+            card.strokeWidth = if (isSelected) 2 else 1
         }
     }
 

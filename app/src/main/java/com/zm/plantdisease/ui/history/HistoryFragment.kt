@@ -15,8 +15,8 @@ class HistoryFragment : Fragment() {
     private val binding get() = _binding!!
     private val vm: HistoryViewModel by viewModels()
     private val adapter = HistoryAdapter { item ->
-        // حذف عند الضغط المطوّل
-        val userId = FirebaseManager.currentUser?.uid ?: return@HistoryAdapter
+        // حذف عند الضغط المطوّل — يعمل مع الضيف والمستخدم الحقيقي
+        val userId = FirebaseManager.userId
         vm.delete(userId, item.id)
     }
 
@@ -31,7 +31,7 @@ class HistoryFragment : Fragment() {
 
         binding.recyclerHistory.adapter = adapter
 
-        val userId = FirebaseManager.currentUser?.uid ?: return
+        val userId = FirebaseManager.userId  // guest or real UID — never null
 
         vm.history.observe(viewLifecycleOwner) { resource ->
             when (resource) {

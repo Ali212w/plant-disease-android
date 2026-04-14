@@ -30,7 +30,7 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val modelA = ModelInfo(
         id          = "model_A",
         name        = "EfficientNet-B0 (Model A)",
-        description = "نموذجريع وخفيف، دقة أداء ممتازة (15.6 MB)",
+        description = "نموذج سريع وخفيف، دقة أداء ممتازة (15.6 MB)",
         type        = "mine",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model_A.ptl",
@@ -42,8 +42,8 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val baselineModel = ModelInfo(
         id          = "baseline",
         name        = "EfficientNet-B0 (Baseline)",
-        description = "نموذج مقارنة أساسي (Ablation) (15.6 MB)",
-        type        = "baseline",
+        description = "نموذج ablation أساسي للمقارنة (15.6 MB)",
+        type        = "mine",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/baseline.ptl",
         fileName    = "baseline.ptl",
@@ -55,7 +55,7 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
         id          = "model_B",
         name        = "ConvNeXt-Tiny (Model B)",
         description = "دقة أعلى، لكن حجمه أكبر (106 MB)",
-        type        = "baseline", // نعرضه كنموذج إضافي
+        type        = "mine",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model_B.ptl",
         fileName    = "model_B.ptl",
@@ -157,7 +157,7 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
                     classifier.classify(imageUri!!)
                 }
 
-                val usedModelName = selectedModel?.name ?: localModel.name
+                val usedModelName = selectedModel?.name ?: modelA.name
                 val response = PredictionResponse(
                     predictedClass   = result.predictedClass,
                     predictedNameEn  = result.predictedNameEn,

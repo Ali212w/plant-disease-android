@@ -20,7 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import coil.load
 import coil.transform.RoundedCornersTransformation
 import com.google.android.material.snackbar.Snackbar
@@ -38,7 +38,7 @@ class DetectFragment : Fragment() {
 
     private var _binding: FragmentDetectBinding? = null
     private val binding get() = _binding!!
-    private val vm: DetectViewModel by viewModels()
+    private val vm: DetectViewModel by activityViewModels()
 
     private var selectedImageUri: Uri? = null
     private var cameraImageUri: Uri?   = null
@@ -168,7 +168,7 @@ class DetectFragment : Fragment() {
         val model = vm.selectedModel.value ?: run {
             Snackbar.make(binding.root, "اختر نموذجاً أولاً", Snackbar.LENGTH_SHORT).show(); return
         }
-        val userId = FirebaseManager.currentUser?.uid ?: ""
+        val userId = FirebaseManager.userId  // guest or real UID — never empty
 
         binding.tvLoadingText.text = "جاري التحليل بـ ${model.name.split("—")[0].trim()}…"
         val stream = requireContext().contentResolver.openInputStream(uri) ?: return
