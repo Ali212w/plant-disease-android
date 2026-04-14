@@ -118,12 +118,16 @@ class ModelsFragment : Fragment() {
         val inflater = LayoutInflater.from(requireContext())
         val view = inflater.inflate(R.layout.item_model_card, binding.layoutMyModels, false)
 
-        val card  = view.findViewById<MaterialCardView>(R.id.cardModel)
-        val dot   = view.findViewById<View>(R.id.modelDot)
-        val name  = view.findViewById<TextView>(R.id.tvModelName)
-        val desc  = view.findViewById<TextView>(R.id.tvModelDesc)
-        val badge = view.findViewById<TextView>(R.id.tvModelBadge)
-        val warn  = view.findViewById<TextView>(R.id.tvModelWarn)
+        val card      = view.findViewById<MaterialCardView>(R.id.cardModel)
+        val dot       = view.findViewById<View>(R.id.modelDot)
+        val name      = view.findViewById<TextView>(R.id.tvModelName)
+        val desc      = view.findViewById<TextView>(R.id.tvModelDesc)
+        val badge     = view.findViewById<TextView>(R.id.tvModelBadge)
+        val warn      = view.findViewById<TextView>(R.id.tvModelWarn)
+        val tvSize    = view.findViewById<TextView>(R.id.tvModelSize)
+        val btnDelete = view.findViewById<TextView>(R.id.btnDeleteModel)
+
+        val btnDownload = view.findViewById<TextView>(R.id.btnDownloadModel)
 
         name.text  = model.name
         desc.text  = model.description
@@ -151,12 +155,92 @@ class ModelsFragment : Fragment() {
 
         try { dot.background.setTint(Color.parseColor(model.color)) } catch(_: Exception) {}
 
-        if (!model.available) {
+        // ── عرض الدقة وحجم الملف والأزرار ──────────────────────────────────
+        tvSize.visibility = View.VISIBLE
+        if (model.available) {
+            warn.visibility = View.GONE
+            btnDownload.visibility = View.GONE
+            
+            // إظهار زر الحذف إذا لم يكن النموذج الافتراضي (Model A) - أو حسب الحاجة
+            if (model.id != "model_A") {
+                btnDelete.visibility = View.VISIBLE
+            } else {
+                btnDelete.visibility = View.GONE
+            }
+
+            var sizeText = "🎯 ${model.accuracy}"
+            if (model.fileName.isNotEmpty()) {
+                val file = java.io.File(requireContext().filesDir, model.fileName)
+                if (file.exists()) {
+                    val sizeMb = file.length() / (1024.0 * 1024.0)
+                    sizeText += " | 💾 %.1f MB".format(sizeMb)
+                }
+            }
+            tvSize.text = sizeText
+            card.alpha = 1.0f
+        } else {
+            // النموذج غير محمل
             warn.visibility = View.VISIBLE
+            warn.text = "⚠️ لم يتم التحميل"
             card.alpha = 0.6f
+            btnDelete.visibility = View.GONE
+            tvSize.text = "🎯 ${model.accuracy}"
+            
+            if (model.downloadUrl.isNotEmpty()) {
+                btnDownload.visibility = View.VISIBLE
+            }
         }
 
-        val isSelected = vm.selectedModel.value?.id == model.id
+        btnDelete.setOnClickListener {
+            android.app.AlertDialog.Builder(requireContext())
+                .setTitle("حذف النموذج")
+                .setMessage("هل تريد حذف \"${model.name}\"؟")
+                .setPositiveButton("🗑️ حذف") { _, _ ->
+                    val removed = vm.removeExternalModel(model)
+                    // نُحمّل النماذج مجدداً لتحديث الواجهة بدل removeExternalModel لأنه مدمج
+                    if (model.type != "external") {
+                        com.zm.plantdisease.data.model.ModelDownloadManager.deleteModel(requireContext(), model.fileName)
+                        vm.loadModels()
+                    }
+                    Snackbar.make(binding.root, "✅ تم الحذف", Snackbar.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("إلغاء", null)
+                .show()
+        }
+
+        btnDownload.setOnClickListener {
+            if (model.downloadUrl.isEmpty() || model.fileName.isEmpty()) return@setOnClickListener
+            
+            btnDownload.text = "⏳"
+            btnDownload.isEnabled = false
+            Snackbar.make(binding.root, "جاري تحميل ${model.name}...", Snackbar.LENGTH_SHORT).show()
+
+            com.zm.plantdisease.data.model.ModelDownloadManager.downloadFile(
+                context = requireContext(),
+                url = model.downloadUrl,
+                fileName = model.fileName,
+                onProgress = { pct ->
+                    requireActivity().runOnUiThread {
+                        btnDownload.text = "$pct%"
+                    }
+                },
+                onSuccess = {
+                    requireActivity().runOnUiThread {
+                        Snackbar.make(binding.root, "✅ تم التحميل بنجاح", Snackbar.LENGTH_SHORT).show()
+                        vm.loadModels() // لتحديث الواجهة وكشف الملف
+                    }
+                },
+                onError = { err ->
+                    requireActivity().runOnUiThread {
+                        btnDownload.text = "⬇️"
+                        btnDownload.isEnabled = true
+                        Snackbar.make(binding.root, "❌ فشل: $err", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            )
+        }
+
+        val isSelected = vm.selectedModel.value?.name == model.name
         card.strokeColor = if (isSelected)
             requireContext().getColor(R.color.green_primary)
         else requireContext().getColor(R.color.border)
@@ -164,7 +248,7 @@ class ModelsFragment : Fragment() {
 
         card.setOnClickListener {
             if (!model.available) {
-                Snackbar.make(binding.root, "ملف النموذج غير موجود", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, "يرجى تحميل النموذج أولاً", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             vm.selectModel(model)

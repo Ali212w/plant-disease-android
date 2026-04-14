@@ -30,11 +30,14 @@ data class PredictionResponse(
 data class ModelInfo(
     val id: String = "",
     val name: String = "",
-    val type: String = "mine",   // mine | baseline | ablation
+    val type: String = "mine",   // mine | baseline | external
     val description: String = "",
     val color: String = "#4CAF50",
     val available: Boolean = true,
-    val loaded: Boolean = true
+    val loaded: Boolean = true,
+    val downloadUrl: String = "",   // رابط التحميل من GitHub
+    val fileName: String = "",      // اسم الملف في filesDir
+    val accuracy: String = ""       // نسبة الدقة للعرض
 )
 
 data class ModelsResponse(val models: List<ModelInfo>)
