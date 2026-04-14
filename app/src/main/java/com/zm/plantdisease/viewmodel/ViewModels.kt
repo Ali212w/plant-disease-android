@@ -201,24 +201,55 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
     val compareResult: LiveData<Resource<Map<String, PredictionResponse>>> = _compareResult
 
     fun compare(inputStream: InputStream, imageUri: Uri?) {
+        val app = getApplication<Application>()
         viewModelScope.launch(Dispatchers.IO) {
             _compareResult.postValue(Resource.Loading())
             try {
-                val result = classifier.classify(imageUri!!)
-                val response = PredictionResponse(
-                    predictedClass  = result.predictedClass,
-                    predictedNameEn = result.predictedNameEn,
-                    predictedNameAr = result.predictedNameAr,
-                    confidence      = result.confidence,
-                    modelName       = "Dual-Backbone Ensemble",
-                    allClasses      = result.allClasses,
-                    inferenceMs     = null,
-                    predictMs       = result.predictMs,
-                    totalMs         = result.totalMs
+                val resultsMap = mutableMapOf<String, PredictionResponse>()
+                
+                // البحث عن كل النماذج المحملة
+                val modelFiles = app.filesDir.listFiles { _, name -> name.endsWith(".ptl") }
+                
+                if (modelFiles.isNullOrEmpty()) {
+                    _compareResult.postValue(Resource.Error("لا توجد نماذج محملة للمقارنة. يرجى تحميلها من قائمة النماذج أولاً."))
+                    return@launch
+                }
+                
+                val knownNames = mapOf(
+                    "model_A.ptl"  to "Model A (15MB)",
+                    "baseline.ptl" to "Baseline (15MB)",
+                    "model_B.ptl"  to "Model B (106MB)"
                 )
-                _compareResult.postValue(Resource.Success(mapOf("ensemble" to response)))
+                
+                for (file in modelFiles) {
+                    try {
+                        val result = classifier.classifyFromPath(imageUri!!, file.absolutePath)
+                        val displayName = knownNames[file.name] ?: file.nameWithoutExtension
+                        
+                        val response = PredictionResponse(
+                            predictedClass  = result.predictedClass,
+                            predictedNameEn = result.predictedNameEn,
+                            predictedNameAr = result.predictedNameAr,
+                            confidence      = result.confidence,
+                            modelName       = displayName,
+                            allClasses      = result.allClasses,
+                            inferenceMs     = null,
+                            predictMs       = result.predictMs,
+                            totalMs         = result.totalMs
+                        )
+                        resultsMap[displayName] = response
+                    } catch (e: Exception) {
+                        // تخطي النموذج اللي يفشل
+                    }
+                }
+                
+                if (resultsMap.isEmpty()) {
+                    _compareResult.postValue(Resource.Error("جميع النماذج فشلت في استخراج النتيجة."))
+                } else {
+                    _compareResult.postValue(Resource.Success(resultsMap))
+                }
             } catch (e: Exception) {
-                _compareResult.postValue(Resource.Error(e.message ?: "خطأ"))
+                _compareResult.postValue(Resource.Error(e.message ?: "حدث خطأ عام"))
             }
         }
     }
