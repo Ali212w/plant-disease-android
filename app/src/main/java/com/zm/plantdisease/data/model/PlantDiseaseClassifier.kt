@@ -21,6 +21,12 @@ class PlantDiseaseClassifier(private val context: Context) {
     companion object {
         private const val IMG_SIZE = 224
         private const val EXPECTED_CLASS_COUNT = 7
+        private const val MIN_CONFIDENCE_FOR_KNOWN = 65f
+        private const val MIN_MARGIN_FOR_KNOWN = 20f
+
+        const val UNKNOWN_CLASS_INDEX = -1
+        const val UNKNOWN_NAME_EN = "Not a supported leaf image"
+        const val UNKNOWN_NAME_AR = "الصورة ليست لورقة نبات مدعومة"
 
         val MEAN = floatArrayOf(0.485f, 0.456f, 0.406f)
         val STD = floatArrayOf(0.229f, 0.224f, 0.225f)
@@ -97,6 +103,12 @@ class PlantDiseaseClassifier(private val context: Context) {
         val scores = normalizeScores(rawOutput)
 
         val topIdx = scores.indices.maxByOrNull { scores[it] } ?: 0
+        val sortedByProb = scores.sortedDescending()
+        val topConfidence = scores[topIdx] * 100f
+        val secondConfidence = (sortedByProb.getOrNull(1) ?: 0f) * 100f
+        val confidenceMargin = topConfidence - secondConfidence
+        val isKnownLeafClass = topConfidence >= MIN_CONFIDENCE_FOR_KNOWN &&
+            confidenceMargin >= MIN_MARGIN_FOR_KNOWN
         val allClasses = scores.mapIndexed { i, prob ->
             ClassResult(
                 classIndex = i,
@@ -106,11 +118,23 @@ class PlantDiseaseClassifier(private val context: Context) {
             )
         }.sortedByDescending { it.probability }
 
+        val predictedClass = if (isKnownLeafClass) topIdx else UNKNOWN_CLASS_INDEX
+        val predictedNameEn = if (isKnownLeafClass) {
+            CLASS_NAMES_EN.getOrElse(topIdx) { "Unknown" }
+        } else {
+            UNKNOWN_NAME_EN
+        }
+        val predictedNameAr = if (isKnownLeafClass) {
+            CLASS_NAMES_AR.getOrElse(topIdx) { "غير معروف" }
+        } else {
+            UNKNOWN_NAME_AR
+        }
+
         return InferenceResult(
-            predictedClass = topIdx,
-            predictedNameEn = CLASS_NAMES_EN.getOrElse(topIdx) { "Unknown" },
-            predictedNameAr = CLASS_NAMES_AR.getOrElse(topIdx) { "غير معروف" },
-            confidence = scores[topIdx] * 100f,
+            predictedClass = predictedClass,
+            predictedNameEn = predictedNameEn,
+            predictedNameAr = predictedNameAr,
+            confidence = topConfidence,
             allClasses = allClasses,
             predictMs = predictMs.toFloat(),
             totalMs = (System.currentTimeMillis() - startTotal).toFloat()
