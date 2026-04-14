@@ -12,6 +12,7 @@ import com.zm.plantdisease.data.firebase.FirebaseManager
 import com.zm.plantdisease.data.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
 import java.io.InputStream
 
 // ── Main ViewModel (Auth state) ───────────────────────────────────────────────
@@ -26,45 +27,62 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
 
     private val classifier = PlantDiseaseClassifier(app.applicationContext)
 
-    // النماذج الثلاثة
+    // ── Dual-Backbone Ensemble (النموذج الرئيسي الافتراضي) ──
+    private val ensembleModel = ModelInfo(
+        id          = "model",
+        name        = "Model",
+        description = "الإنسمبل الثنائي: EfficientNet-B0 + ConvNeXt-Tiny (α=0.3/0.7)",
+        type        = "mine",
+        available   = false,
+        downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model.ptl",
+        fileName    = "model.ptl",
+        accuracy    = "99.1%",
+        color       = "#4CAF50",
+        isProtected = true
+    )
+
+    // ── نماذج المقارنة الفردية ──
     private val modelA = ModelInfo(
         id          = "model_A",
         name        = "EfficientNet-B0 (Model A)",
-        description = "نموذجريع وخفيف، دقة أداء ممتازة (15.6 MB)",
-        type        = "mine",
+        description = "سريع وخفيف، دقة أداء ممتازة (15.6 MB)",
+        type        = "baseline",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model_A.ptl",
         fileName    = "model_A.ptl",
         accuracy    = "98.63%",
-        color       = "#4CAF50"
+        color       = "#2196F3",
+        isProtected = true
     )
 
     private val baselineModel = ModelInfo(
         id          = "baseline",
         name        = "EfficientNet-B0 (Baseline)",
         description = "نموذج Ablation للمقارنة (15.6 MB)",
-        type        = "mine",
+        type        = "baseline",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/baseline.ptl",
         fileName    = "baseline.ptl",
-        accuracy    = "98.63%",
-        color       = "#9C27B0"
+        accuracy    = "97.8%",
+        color       = "#9C27B0",
+        isProtected = true
     )
 
     private val modelB = ModelInfo(
         id          = "model_B",
         name        = "ConvNeXt-Tiny (Model B)",
-        description = "دقة أعلى، لكن حجمه أكبر (106 MB)",
-        type        = "mine",
+        description = "دقة أعلى، حجم أكبر (106 MB)",
+        type        = "baseline",
         available   = false,
         downloadUrl = "https://github.com/Ali212w/plant-disease-model/releases/download/v1.0/model_B.ptl",
         fileName    = "model_B.ptl",
         accuracy    = "99.26%",
-        color       = "#FF9800"
+        color       = "#FF9800",
+        isProtected = true
     )
 
-    // القائمة المدمجة
-    private val predefinedModels = listOf(modelA, baselineModel, modelB)
+    // Ensemble أولاً، ثم نماذج المقارنة
+    private val predefinedModels = listOf(ensembleModel, modelA, baselineModel, modelB)
 
     // القائمة النشطة (قابلة للتوسع بنماذج خارجية)
     private val modelList = predefinedModels.toMutableList()
@@ -77,7 +95,8 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     private val _prediction = MutableLiveData<Resource<PredictionResponse>>()
     val prediction: LiveData<Resource<PredictionResponse>> = _prediction
 
-    private val _selectedModel = MutableLiveData<ModelInfo?>(modelA)
+    // الافتراضي هو الـ Ensemble
+    private val _selectedModel = MutableLiveData<ModelInfo?>(ensembleModel)
     val selectedModel: LiveData<ModelInfo?> = _selectedModel
 
     // تتبع حالة التحميل الجاري: fileName -> progress(0-100)
@@ -90,14 +109,8 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
         // تحديث حالة النماذج المسبقة من حيث توفرها محلياً
         for (i in modelList.indices) {
             val m = modelList[i]
-            if (m.fileName.isNotEmpty()) {
-                val exists = java.io.File(ctx.filesDir, m.fileName).exists()
-                modelList[i] = m.copy(
-                    available = exists,
-                    // إذا كان موجوداً، نجعل id الخاص به هو المسار الكامل ليتم تحميله بـ classifyFromPath
-                    id = if (exists) java.io.File(ctx.filesDir, m.fileName).absolutePath else m.id
-                )
-            }
+            val exists = m.fileName.isNotEmpty() && java.io.File(ctx.filesDir, m.fileName).exists()
+            modelList[i] = m.copy(available = exists)
         }
         
         _models.postValue(Resource.Success(modelList.toList()))
@@ -108,8 +121,11 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
         if (updatedSelect != null && updatedSelect.available) {
             _selectedModel.postValue(updatedSelect)
         } else {
-            // اختيار أول نموذج متاح، وإلا لا شيء
-            _selectedModel.postValue(modelList.firstOrNull { it.available })
+            // أعطِ الأولوية دائماً للـ Ensemble ثم أي نموذج آخر متاح
+            _selectedModel.postValue(
+                modelList.firstOrNull { it.id == ensembleModel.id && it.available }
+                    ?: modelList.firstOrNull { it.available }
+            )
         }
     }
 
@@ -150,7 +166,13 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** إضافة نموذج خارجي (.ptl) من مسار داخلي في الجوال */
-    fun addExternalModel(modelPath: String, modelName: String, description: String) {
+    fun addExternalModel(modelPath: String, modelName: String, description: String): String? {
+        val validationError = classifier.validateModelFile(modelPath)
+        if (validationError != null) {
+            try { File(modelPath).delete() } catch (_: Exception) {}
+            return validationError
+        }
+
         val ext = ModelInfo(
             id          = modelPath, // المسار هو المعرف الفريد
             name        = modelName,
@@ -164,20 +186,34 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
         modelList.add(ext)
         _models.postValue(Resource.Success(modelList.toList()))
         _selectedModel.postValue(ext)
+        return null
     }
 
     /** حذف نموذج خارجي من القائمة وحذف ملفه من التخزين */
     fun removeExternalModel(model: ModelInfo): Boolean {
+        // لا تحذف النماذج المحمية
+        if (model.isProtected) return false
         val deleted = try {
             java.io.File(model.id).delete()
         } catch (_: Exception) { false }
         modelList.removeAll { it.id == model.id }
-        // إذا كان النموذج المحذوف هو المختار، ارجع للنموذج الافتراضي
+        // إذا كان النموذج المحذوف هو المختار، ارجع للـ Ensemble
         if (_selectedModel.value?.id == model.id) {
-            _selectedModel.postValue(modelList.firstOrNull())
+            _selectedModel.postValue(modelList.firstOrNull { it.available } ?: modelList.firstOrNull())
         }
         _models.postValue(Resource.Success(modelList.toList()))
         return deleted
+    }
+
+    private fun resolveModelPath(model: ModelInfo?, app: Application): String? {
+        model ?: return null
+        return when {
+            model.type == "external" -> model.id.takeIf { it.isNotBlank() && File(it).exists() }
+            model.fileName.isNotEmpty() -> {
+                File(app.filesDir, model.fileName).takeIf { it.exists() }?.absolutePath
+            }
+            else -> null
+        }
     }
 
     fun predict(modelName: String, inputStream: InputStream, userId: String, imageUri: Uri?) {
@@ -185,17 +221,17 @@ class DetectViewModel(app: Application) : AndroidViewModel(app) {
             _prediction.postValue(Resource.Loading())
             try {
                 // تحقق من النموذج المختار
+                val app = getApplication<Application>()
                 val selectedModel = _selectedModel.value
-                val result = if (selectedModel != null && selectedModel.available && selectedModel.fileName.isNotEmpty()) {
-                    classifier.classifyFromPath(imageUri!!, selectedModel.id) // id أصبح المسار الكامل بفضل loadModels
-                } else if (selectedModel?.type == "external" && selectedModel.id.isNotEmpty()) {
-                    classifier.classifyFromPath(imageUri!!, selectedModel.id)
+                val selectedModelPath = resolveModelPath(selectedModel, app)
+                val result = if (selectedModelPath != null) {
+                    classifier.classifyFromPath(imageUri!!, selectedModelPath)
                 } else {
                     // في الحالات الطارئة جداً
                     classifier.classify(imageUri!!)
                 }
 
-                val usedModelName = selectedModel?.name ?: modelA.name
+                val usedModelName = selectedModel?.name ?: ensembleModel.name
                 val response = PredictionResponse(
                     predictedClass   = result.predictedClass,
                     predictedNameEn  = result.predictedNameEn,
@@ -254,6 +290,7 @@ class CompareViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 
                 val knownNames = mapOf(
+                    "model.ptl"    to "Model (122MB)",
                     "model_A.ptl"  to "Model A (15MB)",
                     "baseline.ptl" to "Baseline (15MB)",
                     "model_B.ptl"  to "Model B (106MB)"

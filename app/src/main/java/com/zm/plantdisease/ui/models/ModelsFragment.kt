@@ -19,7 +19,6 @@ import com.zm.plantdisease.viewmodel.DetectViewModel
 import java.io.File
 import java.io.FileOutputStream
 
-
 class ModelsFragment : Fragment() {
 
     private var _binding: FragmentModelsBinding? = null
@@ -28,13 +27,12 @@ class ModelsFragment : Fragment() {
 
     // Maps model name → its card view for lightweight selection highlighting
     private val modelCardMap = mutableMapOf<String, MaterialCardView>()
-    // ── فتح ملف .ptl من ملفات الجوال ──────────────────────────────────────────
+
     private val filePicker = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         uri ?: return@registerForActivityResult
         try {
-            // استخراج اسم الملف
             val fileName = requireContext().contentResolver
                 .query(uri, null, null, null, null)
                 ?.use { cursor ->
@@ -43,30 +41,34 @@ class ModelsFragment : Fragment() {
                     if (idx >= 0) cursor.getString(idx) else "external_model.ptl"
                 } ?: "external_model.ptl"
 
-            // نسخ الملف إلى التخزين الداخلي
             val dest = File(requireContext().filesDir, fileName)
             requireContext().contentResolver.openInputStream(uri)?.use { inp ->
                 FileOutputStream(dest).use { out -> inp.copyTo(out) }
             }
 
-            // اسم العرض = اسم الملف بدون الامتداد
             val displayName = fileName.removeSuffix(".ptl").replace("_", " ")
-
-            // إضافة النموذج الخارجي للـ ViewModel
-            vm.addExternalModel(
+            val error = vm.addExternalModel(
                 modelPath = dest.absolutePath,
                 modelName = displayName,
-                description = "نموذج خارجي من ملفي الجوال"
+                description = "External model imported from local storage"
             )
-            Snackbar.make(binding.root, "✅ تم تحميل $displayName", Snackbar.LENGTH_SHORT).show()
 
+            if (error != null) {
+                Snackbar.make(binding.root, error, Snackbar.LENGTH_LONG).show()
+                return@registerForActivityResult
+            }
+
+            Snackbar.make(binding.root, "تم تحميل $displayName", Snackbar.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Snackbar.make(binding.root, "❌ خطأ: ${e.message}", Snackbar.LENGTH_LONG).show()
+            Snackbar.make(binding.root, "خطأ: ${e.message}", Snackbar.LENGTH_LONG).show()
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, c: ViewGroup?,
-                              s: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        c: ViewGroup?,
+        s: Bundle?
+    ): View {
         _binding = FragmentModelsBinding.inflate(inflater, c, false)
         return binding.root
     }
@@ -74,18 +76,16 @@ class ModelsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Observe models list — rebuild cards when data OR availability changes
         var lastModelStates: List<String> = emptyList()
         vm.models.observe(viewLifecycleOwner) { resource ->
             when (resource) {
                 is Resource.Loading -> binding.progressBar.visibility = View.VISIBLE
-                is Resource.Error   -> {
+                is Resource.Error -> {
                     binding.progressBar.visibility = View.GONE
                     Snackbar.make(binding.root, resource.message, Snackbar.LENGTH_LONG).show()
                 }
                 is Resource.Success -> {
                     binding.progressBar.visibility = View.GONE
-                    // نقارن الاسم + حالة التوفر معاً لإعادة البناء عند التحميل/الحذف
                     val newStates = resource.data.map { "${it.name}-${it.available}" }
                     if (newStates != lastModelStates) {
                         lastModelStates = newStates
@@ -96,14 +96,24 @@ class ModelsFragment : Fragment() {
             }
         }
 
-        // Observe selectedModel — ONLY update card stroke highlights, never rebuild the list
-        vm.selectedModel.observe(viewLifecycleOwner) { _ -> refreshSelectionHighlight() }
+        vm.selectedModel.observe(viewLifecycleOwner) {
+            refreshSelectionHighlight()
+        }
 
-        // راقب تقدم التحميل لتحديث أزرار الكروت مباشرةً (حتى بعد العودة للتبويب)
         vm.downloadProgress.observe(viewLifecycleOwner) { progressMap ->
             progressMap.forEach { (fileName, pct) ->
-                // ابحث عن الكارت الذي يملك نفس الـ fileName
                 binding.layoutMyModels.let { container ->
+                    for (i in 0 until container.childCount) {
+                        val card = container.getChildAt(i)
+                        val tag = card.tag as? String
+                        if (tag == fileName) {
+                            val btn = card.findViewById<TextView>(R.id.btnDownloadModel)
+                            btn?.text = "$pct%"
+                            btn?.isEnabled = false
+                        }
+                    }
+                }
+                binding.layoutBaselineModels.let { container ->
                     for (i in 0 until container.childCount) {
                         val card = container.getChildAt(i)
                         val tag = card.tag as? String
@@ -117,25 +127,26 @@ class ModelsFragment : Fragment() {
             }
         }
 
-        // زر إضافة نموذج خارجي
         binding.btnPreloadMyModels.text = "📂 إضافة نموذج خارجي"
         binding.btnPreloadMyModels.setOnClickListener {
-            Snackbar.make(binding.root,
+            Snackbar.make(
+                binding.root,
                 "اختر ملف .ptl من التنزيلات أو أي مجلد",
-                Snackbar.LENGTH_SHORT).show()
+                Snackbar.LENGTH_SHORT
+            ).show()
             filePicker.launch("*/*")
         }
 
-        vm.loadModels() // تحميل أولي لتحديث حالة الملفات
+        vm.loadModels()
     }
 
     override fun onResume() {
         super.onResume()
-        vm.loadModels() // تحديث عند العودة للتبويب لكي تظهر النماذج المحملة
+        vm.loadModels()
     }
 
     private fun buildModelList(models: List<ModelInfo>) {
-        val myList   = binding.layoutMyModels
+        val myList = binding.layoutMyModels
         val baselist = binding.layoutBaselineModels
         myList.removeAllViews()
         baselist.removeAllViews()
@@ -143,10 +154,11 @@ class ModelsFragment : Fragment() {
 
         models.forEach { model ->
             val card = buildModelCard(model)
-            if (model.type == "mine" || model.type == "external")
+            if (model.type == "mine" || model.type == "external") {
                 myList.addView(card)
-            else
+            } else {
                 baselist.addView(card)
+            }
         }
     }
 
@@ -154,59 +166,54 @@ class ModelsFragment : Fragment() {
         val inflater = LayoutInflater.from(requireContext())
         val view = inflater.inflate(R.layout.item_model_card, binding.layoutMyModels, false)
 
-        val card      = view.findViewById<MaterialCardView>(R.id.cardModel)
-        val dot       = view.findViewById<View>(R.id.modelDot)
-        val name      = view.findViewById<TextView>(R.id.tvModelName)
-        val desc      = view.findViewById<TextView>(R.id.tvModelDesc)
-        val badge     = view.findViewById<TextView>(R.id.tvModelBadge)
-        val warn      = view.findViewById<TextView>(R.id.tvModelWarn)
-        val tvSize    = view.findViewById<TextView>(R.id.tvModelSize)
+        val card = view.findViewById<MaterialCardView>(R.id.cardModel)
+        val dot = view.findViewById<View>(R.id.modelDot)
+        val name = view.findViewById<TextView>(R.id.tvModelName)
+        val desc = view.findViewById<TextView>(R.id.tvModelDesc)
+        val badge = view.findViewById<TextView>(R.id.tvModelBadge)
+        val warn = view.findViewById<TextView>(R.id.tvModelWarn)
+        val tvSize = view.findViewById<TextView>(R.id.tvModelSize)
         val btnDelete = view.findViewById<TextView>(R.id.btnDeleteModel)
-
         val btnDownload = view.findViewById<TextView>(R.id.btnDownloadModel)
 
-        name.text  = model.name
-        desc.text  = model.description
-        badge.text = when(model.type) {
-            "mine"     -> "نموذجك"
+        name.text = model.name
+        desc.text = model.description
+        badge.text = when (model.type) {
+            "mine" -> "نموذجك"
             "external" -> "خارجي"
             "baseline" -> "مقارنة"
-            else       -> "Ablation"
+            else -> "Ablation"
         }
 
-        val badgeBg = when(model.type) {
-            "mine"     -> R.color.green_bg_low
+        val badgeBg = when (model.type) {
+            "mine" -> R.color.green_bg_low
             "external" -> R.color.cyan_bg_low
             "baseline" -> R.color.red_bg_low
-            else       -> R.color.cyan_bg_low
+            else -> R.color.cyan_bg_low
         }
-        val badgeTxt = when(model.type) {
-            "mine"     -> R.color.green_primary
+        val badgeTxt = when (model.type) {
+            "mine" -> R.color.green_primary
             "external" -> R.color.cyan
             "baseline" -> R.color.red
-            else       -> R.color.cyan
+            else -> R.color.cyan
         }
         badge.setBackgroundResource(badgeBg)
         badge.setTextColor(requireContext().getColor(badgeTxt))
 
-        try { dot.background.setTint(Color.parseColor(model.color)) } catch(_: Exception) {}
+        try {
+            dot.background.setTint(Color.parseColor(model.color))
+        } catch (_: Exception) {
+        }
 
-        // ── عرض الدقة وحجم الملف والأزرار ──────────────────────────────────
         tvSize.visibility = View.VISIBLE
         if (model.available) {
             warn.visibility = View.GONE
             btnDownload.visibility = View.GONE
-            
-            // إظهار زر الحذف إذا لم يكن النموذج الافتراضي (Model A) - أو حسب الحاجة
-            if (model.id != "model_A") {
-                btnDelete.visibility = View.VISIBLE
-            } else {
-                btnDelete.visibility = View.GONE
-            }
+            btnDelete.visibility = if (model.isProtected) View.GONE else View.VISIBLE
 
             var sizeText = "🎯 ${model.accuracy}"
             if (model.fileName.isNotEmpty()) {
-                val file = java.io.File(requireContext().filesDir, model.fileName)
+                val file = File(requireContext().filesDir, model.fileName)
                 if (file.exists()) {
                     val sizeMb = file.length() / (1024.0 * 1024.0)
                     sizeText += " | 💾 %.1f MB".format(sizeMb)
@@ -215,36 +222,38 @@ class ModelsFragment : Fragment() {
             tvSize.text = sizeText
             card.alpha = 1.0f
         } else {
-            // النموذج غير محمل
             warn.visibility = View.VISIBLE
             warn.text = "⚠️ لم يتم التحميل"
             card.alpha = 0.6f
             btnDelete.visibility = View.GONE
             tvSize.text = "🎯 ${model.accuracy}"
-            
             if (model.downloadUrl.isNotEmpty()) {
                 btnDownload.visibility = View.VISIBLE
             }
         }
 
         btnDelete.setOnClickListener {
+            if (model.isProtected) return@setOnClickListener
+
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("حذف النموذج")
                 .setMessage("هل تريد حذف \"${model.name}\"؟")
                 .setPositiveButton("🗑️ حذف") { _, _ ->
-                    val removed = vm.removeExternalModel(model)
-                    // نُحمّل النماذج مجدداً لتحديث الواجهة بدل removeExternalModel لأنه مدمج
-                    if (model.type != "external") {
-                        com.zm.plantdisease.data.model.ModelDownloadManager.deleteModel(requireContext(), model.fileName)
+                    if (model.type == "external") {
+                        vm.removeExternalModel(model)
+                    } else {
+                        com.zm.plantdisease.data.model.ModelDownloadManager.deleteModel(
+                            requireContext(),
+                            model.fileName
+                        )
                         vm.loadModels()
                     }
-                    Snackbar.make(binding.root, "✅ تم الحذف", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(binding.root, "تم الحذف", Snackbar.LENGTH_SHORT).show()
                 }
                 .setNegativeButton("إلغاء", null)
                 .show()
         }
 
-        // وسّم كل كارت باسم الملف حتى يتمكن المراقب من تحديث أزرار التحميل
         view.tag = model.fileName
 
         btnDownload.setOnClickListener {
@@ -252,9 +261,8 @@ class ModelsFragment : Fragment() {
             btnDownload.text = "⏳"
             btnDownload.isEnabled = false
             _binding?.let {
-                Snackbar.make(it.root, "جاري تحميل ${model.name}...", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it.root, "جارٍ تحميل ${model.name}...", Snackbar.LENGTH_SHORT).show()
             }
-            // التحميل يُدار من الـ ViewModel — يستمر حتى لو غادر المستخدم الصفحة
             vm.downloadModelFile(
                 context = requireContext().applicationContext,
                 url = model.downloadUrl,
@@ -262,14 +270,14 @@ class ModelsFragment : Fragment() {
             )
         }
 
-        // Register this card in the map so refreshSelectionHighlight() can find it
         modelCardMap[model.name] = card
 
-        // Initial highlight
         val isSelected = vm.selectedModel.value?.name == model.name
-        card.strokeColor = if (isSelected)
+        card.strokeColor = if (isSelected) {
             requireContext().getColor(R.color.green_primary)
-        else requireContext().getColor(R.color.border)
+        } else {
+            requireContext().getColor(R.color.border)
+        }
         card.strokeWidth = if (isSelected) 2 else 1
 
         card.setOnClickListener {
@@ -277,28 +285,29 @@ class ModelsFragment : Fragment() {
                 Snackbar.make(binding.root, "يرجى تحميل النموذج أولاً", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            vm.selectModel(model)  // This posts to _selectedModel only — does NOT call loadModels()
-            Snackbar.make(binding.root, "✅ تم اختيار ${model.name}", Snackbar.LENGTH_SHORT).show()
+            vm.selectModel(model)
+            Snackbar.make(binding.root, "تم اختيار ${model.name}", Snackbar.LENGTH_SHORT).show()
         }
 
         return view
     }
 
-    /**
-     * Updates only the stroke/highlight on existing cards — does NOT rebuild the list.
-     * This breaks the loadModels() → selectedModel → refreshSelection() → loadModels() loop.
-     */
     private fun refreshSelectionHighlight() {
         if (!isAdded) return
         val selectedName = vm.selectedModel.value?.name
         modelCardMap.forEach { (name, card) ->
-            val isSelected = (name == selectedName)
-            card.strokeColor = if (isSelected)
+            val isSelected = name == selectedName
+            card.strokeColor = if (isSelected) {
                 requireContext().getColor(R.color.green_primary)
-            else requireContext().getColor(R.color.border)
+            } else {
+                requireContext().getColor(R.color.border)
+            }
             card.strokeWidth = if (isSelected) 2 else 1
         }
     }
 
-    override fun onDestroyView() { super.onDestroyView(); _binding = null }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }
